@@ -131,6 +131,7 @@ class Profiler {
     bool _add_thread_frame;
     bool _update_thread_names;
     volatile bool _thread_events_state;
+    SpinLock _jmethodID_lock;
 
     SpinLock _jit_lock;
     SpinLock _stubs_lock;
@@ -194,6 +195,7 @@ class Profiler {
         _max_stack_depth(0),
         _safe_mode(0),
         _thread_events_state(JVMTI_DISABLE),
+        _jmethodID_lock(),
         _jit_lock(),
         _stubs_lock(),
         _java_methods(),

@@ -393,9 +393,15 @@ int Profiler::getJavaTraceAsync(void* ucontext, ASGCT_CallFrame* frames, int max
                 pc = 0;
             }
         }
-    } else if (trace.num_frames == ticks_GC_active && VMStructs::_get_stack_trace != NULL && !(_safe_mode & GC_TRACES)) {
-        // While GC is running Java threads are known to be at safepoint
-        return getJavaTraceJvmti((jvmtiFrameInfo*)frames, frames, max_depth);
+    } else if (trace.num_frames == ticks_GC_active && !(_safe_mode & GC_TRACES)) {
+        if (VMStructs::_get_stack_trace != NULL && CollectedHeap::isGCActive()) {
+            // While GC is running Java threads are known to be at safepoint
+            if (_jmethodID_lock.tryLock()) {
+                int result = getJavaTraceJvmti((jvmtiFrameInfo*)frames, frames, max_depth);
+                _jmethodID_lock.unlock();
+                return result;
+            }
+        }
     }
 
     if (trace.num_frames > 0) {
