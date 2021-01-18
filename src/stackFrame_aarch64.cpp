@@ -38,8 +38,8 @@ uintptr_t& StackFrame::fp() {
     return (uintptr_t&)_ucontext->uc_mcontext.regs[REG_FP];
 }
 
-uintptr_t StackFrame::retval() {
-    return (uintptr_t)_ucontext->uc_mcontext.regs[0];
+uintptr_t& StackFrame::retval() {
+    return (uintptr_t&)_ucontext->uc_mcontext.regs[0];
 }
 
 uintptr_t StackFrame::arg0() {

@@ -40,8 +40,8 @@ uintptr_t& StackFrame::fp() {
     return (uintptr_t&)REG(REG_RBP, __rbp);
 }
 
-uintptr_t StackFrame::retval() {
-    return (uintptr_t)REG(REG_RAX, __rax);
+uintptr_t& StackFrame::retval() {
+    return (uintptr_t&)REG(REG_RAX, __rax);
 }
 
 uintptr_t StackFrame::arg0() {
@@ -120,12 +120,17 @@ bool StackFrame::checkInterruptedSyscall() {
     }
 #else
     if (retval() == (uintptr_t)-EINTR) {
-        // Workaround for JDK-8237858: restart the interrupted poll() manually.
-        // Check if the previous instruction is mov eax, SYS_poll with infinite timeout
-        if (arg2() == (uintptr_t)-1) {
-            uintptr_t pc = this->pc();
-            if ((pc & 0xfff) >= 7 && *(unsigned char*)(pc - 7) == 0xb8 && *(int*)(pc - 6) == SYS_poll) {
+        // Workaround for JDK-8237858 and JDK-8259943:
+        // JDK does not always handle EINTR properly - let's do it for them
+        uintptr_t pc = this->pc();
+        if ((pc & 0xfff) >= 7 && *(unsigned char*)(pc - 7) == 0xb8) {
+            int nr = *(int*)(pc - 6);
+            if (nr == SYS_poll && arg2() == (uintptr_t)-1) {
+                // Restart interrupted poll() with infinite timeout
                 this->pc() = pc - 7;
+            } else if (nr == SYS_close) {
+                // Don't let interrupted close() return error
+                retval() = 0;
             }
         }
         return true;
